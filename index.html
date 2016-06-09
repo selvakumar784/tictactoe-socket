@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Tic Tac Toe</title>
+  </head>
+  <body>
+    <div id="#Square">
+      <h4>
+        Tic Tac Toe - Multi Screen game
+      </h4>
+      <canvas id="Canvas1" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(1)">
+      </canvas>
+      <canvas id="Canvas2" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(2)">
+      </canvas>
+      <canvas id="Canvas3" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(3)">
+      </canvas>
+      <br>
+      <canvas id="Canvas4" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(4)">
+      </canvas>
+      <canvas id="Canvas5" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(5)">
+      </canvas>
+      <canvas id="Canvas6" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(6)">
+      </canvas>
+      <br>
+      <canvas id="Canvas7" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(7)">
+      </canvas>
+      <canvas id="Canvas8" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(8)">
+      </canvas>
+      <canvas id="Canvas9" width="40" height="40" style="border:1px solid #000000;" onclick="canvasNumber(9)">
+      </canvas>
+    </div>
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script>
+      var socket = io.connect('http://localhost:3000');
+      var room_name = '';
+
+      socket.on('updatechat', function (username, data) {
+        $('#conversation').append('<b>'+username + ':</b> ' + data + '<br>');
+      });
+
+      socket.on('connect', function() {
+        socket.emit('adduser', prompt("What's your name?"));
+      });
+
+      socket.on('alert', function(symbol) {
+        alert(symbol +" won");
+        location.reload('true');
+      });
+
+      socket.on('gameover', function() {
+        alert("Tie. Game over");
+        location.reload('true');
+      });
+
+      socket.on('boxfilled', function(canvasId) {
+        alert("The box " + canvasId + " is already filled :D ");
+      });
+
+      socket.on('clearcontent', function() {
+        ids = document.getElementsByTagName("canvas");
+        for(var i=0; i < 9; i++) {
+          context = ids[i].getContext("2d");
+          context.clearRect(0,0,1000,1000);
+        }
+      });
+
+      socket.on('clearrooms', function() {
+          $('#rooms').empty();
+      });
+
+      socket.on('updaterooms', function(rooms, current_room) {
+        $('#rooms').empty();
+        room_name = current_room;
+        $.each(rooms, function(key, value) {
+          if(key == current_room) {
+            $('#rooms').append('<div>' + value + '</div>');
+          }
+          else {
+            $('#rooms').append('<div><a href="#" onclick="switchroom(\''+value+'\')">' + value + '</a></div>');
+          }
+        });
+      });
+
+      socket.on('showrooms', function(rooms, socketId, room_name) {
+        $.each(rooms, function(key, value) {
+          console.log("val "+value);
+          if (value != room_name)
+            $('#rooms').append('<div><a href="#" onclick="switchroom(\''+value+'\',\''+socketId+'\')">' + value + '</a></div>');
+          else
+            $('#rooms').append('<div>' + value + '</div>');
+        });
+      });
+
+      function switchroom(room, socketId) {
+        socket.emit('switchroom', room, socketId);
+      }
+
+      socket.on('tic-tac', function(msg, content) {
+        canvasClicked(msg, content);
+      });
+
+      function canvasNumber(canvasNum) {
+        socket.emit('tic-tac', canvasNum, socket.io.engine.id, room_name);
+      }
+
+      function canvasClicked(canvasNum, content) {
+        for (var i = 0; i < 9; i++) {
+          if (content[i] != '') {
+            canvasId = "Canvas" + (i + 1);
+            id = document.getElementById(canvasId);
+            context = id.getContext("2d");
+            // Draw the symbol 'X'
+            if (content[i] == 'X') {
+              context.beginPath();
+              context.moveTo(10, 10);
+              context.lineTo(30, 30);
+              context.moveTo(30, 10);
+              context.lineTo(10, 30);
+              context.stroke();
+              context.closePath();
+            }
+            //draw the symbol 'O'
+            else {
+              context.beginPath();
+              context.arc(20,20,15,0,2*Math.PI);
+              context.stroke();
+              context.closePath();
+            }
+          }
+        }
+      }
+      $(function() {
+        var room_name = '';
+        $('#createroom').click( function() {
+          room_name = prompt("Room Name?")
+          socket.emit('createroom', room_name, socket.io.engine.id);
+        });
+
+        $('#joinroom').click( function() {
+          socket.emit('showrooms', socket.io.engine.id, room_name);
+        });
+      });
+      window.onbeforeunload = function (e) {
+        e = e || window.event;
+
+        if (e) {
+            e.returnValue = 'Sure? Closing the tab/browser will hang the game.';
+        }
+
+      };
+    </script>
+    <div id="conversation" style="float:right;width:300px;height:250px;overflow:scroll-y;padding:10px;position:absolute;right:500px;top:0px;position:absolute">
+    </div>
+    <div id="button" style="position:absolute;top:10px;float:right;right:120px">
+      <input type="button" id="createroom" value="create" />
+      <input type="button" id="joinroom" value="join" />
+    </div>
+
+    <div style="float:right;width:100px;border-right:1px solid black;height:300px;padding:10px;overflow:scroll-y;top:0px;position:absolute;right:0px;">
+      <b>ROOMS</b>
+      <div id="rooms"></div>
+    </div>
+  </body>
+</html>
